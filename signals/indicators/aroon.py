@@ -42,19 +42,28 @@ class AROON(Signal):
     def analyze(self, df):
         if len(df) < 2:
             return None
-    
         c, p = df.iloc[-1], df.iloc[-2]
-    
-        if any(pd.isna(x) for x in [
-            c["aroon_up"], c["aroon_down"],
-            p["aroon_up"], p["aroon_down"]
-        ]):
+        if any(pd.isna(x) for x in [c["aroon_up"], c["aroon_down"], p["aroon_up"], p["aroon_down"]]):
             return None
-    
         if c["aroon_up"] >= c["aroon_down"] and p["aroon_up"] < p["aroon_down"]:
             return "BUY"
-    
         if c["aroon_up"] < c["aroon_down"] and p["aroon_up"] >= p["aroon_down"]:
             return "SELL"
     
         return None
+    
+    def state(self, df):
+        if len(df) < 1:
+            return None
+        c = df.iloc[-1]
+        if any(pd.isna(x) for x in [c["aroon_up"], c["aroon_down"]]):
+            return None
+        if c["aroon_up"] >= c["aroon_down"]:
+            return "BUY"
+        if c["aroon_up"] < c["aroon_down"]:
+            return "SELL"
+    
+        return None
+
+    def value(self, df):
+        raise NotImplementedError

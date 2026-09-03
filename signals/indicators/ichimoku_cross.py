@@ -37,17 +37,29 @@ class ICHIMOKU_CROSS(Signal):
     def analyze(self, df):
         if len(df) < 2:
             return None
-
         c, p = df.iloc[-1], df.iloc[-2]
-
-        if any(pd.isna(c[x]) or pd.isna(p[x])
-               for x in ["Tankan_sen", "Kijun_sen"]):
+        if any(pd.isna(c[x]) or pd.isna(p[x]) for x in ["Tankan_sen", "Kijun_sen"]):
             return None
-
         if c["Tankan_sen"] >= c["Kijun_sen"] and p["Tankan_sen"] < p["Kijun_sen"]:
             return "BUY"
-
         if c["Tankan_sen"] < c["Kijun_sen"] and p["Tankan_sen"] >= p["Kijun_sen"]:
             return "SELL"
 
         return None
+    
+    def state(self, df):
+        if len(df) < 1:
+            return None
+    
+        c = df.iloc[-1]
+        if any(pd.isna(c[x]) for x in ["Tankan_sen", "Kijun_sen"]):
+            return None
+        if c["Tankan_sen"] >= c["Kijun_sen"]:
+            return "BUY"
+        if c["Tankan_sen"] < c["Kijun_sen"]:
+            return "SELL"
+    
+        return None
+    
+    def value(self, df):
+        raise NotImplementedError

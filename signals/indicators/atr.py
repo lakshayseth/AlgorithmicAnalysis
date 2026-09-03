@@ -24,3 +24,12 @@ class ATR(Signal):
     
     def plot(self, df, panel):
         return [mpf.make_addplot(df["atr"], panel=panel, color="blue", width=1, ylabel=self.plot_panel)]
+
+    def analyze(self, df):
+        raise NotImplementedError
+    
+    def state(self, df):
+        raise NotImplementedError
+    
+    def value(self, df):
+        return df["atr"].iloc[-1]

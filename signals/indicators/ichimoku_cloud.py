@@ -95,3 +95,25 @@ class ICHIMOKU_CLOUD(Signal):
             return "SELL"
 
         return None
+    
+    def state(self, df):
+        if len(df) < 1:
+            return None
+        c = df.iloc[-1]
+        cols = ["Tankan_sen", "Kijun_sen", "Senkou_Span_A", "Senkou_Span_B", "close"]
+        if any(pd.isna(c[x]) for x in cols):
+            return None
+        ctop = max(c["Senkou_Span_A"], c["Senkou_Span_B"])
+        cbottom = min(c["Senkou_Span_A"],c["Senkou_Span_B"])
+        bullish = (c["close"] >= ctop and c["Tankan_sen"] >= c["Kijun_sen"])
+        bearish = (c["close"] < cbottom and c["Tankan_sen"] < c["Kijun_sen"])
+    
+        if bullish:
+            return "BUY"
+        if bearish:
+            return "SELL"
+    
+        return None
+
+    def value(self, df):
+        raise NotImplementedError

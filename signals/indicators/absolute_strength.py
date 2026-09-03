@@ -36,7 +36,6 @@ class ABSOLUTE_STRENGTH(Signal):
     
     def test(self, df):
         diff = df["bull_ema"] - df["bear_ema"]
-    
         bull_signal = (diff.shift(1) <= 0) & (diff > 0)
         bear_signal = (diff.shift(1) >= 0) & (diff < 0)
     
@@ -45,19 +44,28 @@ class ABSOLUTE_STRENGTH(Signal):
     def analyze(self, df):
         if len(df) < 2:
             return None
-    
         c, p = df.iloc[-1], df.iloc[-2]
-    
-        if any(pd.isna(x) for x in [
-            c["bull_ema"], c["bear_ema"],
-            p["bull_ema"], p["bear_ema"]
-        ]):
+        if any(pd.isna(x) for x in [c["bull_ema"], c["bear_ema"], p["bull_ema"], p["bear_ema"]]):
             return None
-    
         if c["bull_ema"] >= c["bear_ema"] and p["bull_ema"] < p["bear_ema"]:
             return "BUY"
-    
         if c["bull_ema"] < c["bear_ema"] and p["bull_ema"] >= p["bear_ema"]:
             return "SELL"
     
         return None
+    
+    def state(self, df):
+        if len(df) < 1:
+            return None
+        c = df.iloc[-1]
+        if any(pd.isna(x) for x in [c["bull_ema"], c["bear_ema"]]):
+            return None
+        if c["bull_ema"] >= c["bear_ema"]:
+            return "BUY"
+        if c["bull_ema"] < c["bear_ema"]:
+            return "SELL"
+    
+        return None
+
+    def value(self, df):
+        raise NotImplementedError

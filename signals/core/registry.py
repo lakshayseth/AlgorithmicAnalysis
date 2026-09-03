@@ -1,19 +1,21 @@
+from ..indicators.absolute_strength import ABSOLUTE_STRENGTH
+from ..indicators.aroon import AROON
 from ..indicators.atr import ATR
 from ..indicators.ichimoku_cross import ICHIMOKU_CROSS
 from ..indicators.ichimoku_cloud import ICHIMOKU_CLOUD
+from ..indicators.kijunsen import KIJUNSEN
 from ..indicators.ssl import SSL
-from ..indicators.absolute_strength import ABSOLUTE_STRENGTH
-from ..indicators.aroon import AROON
 from ..indicators.wae import WAE
 
 
 SIGNALS = {
+    "absolute_strength": ABSOLUTE_STRENGTH,
+    "aroon": AROON,
     "atr": ATR,
     "ichimoku_cross": ICHIMOKU_CROSS,
     "ichimoku_cloud": ICHIMOKU_CLOUD,
+    "kijunsen": KIJUNSEN,
     "ssl": SSL,
-    "absolute_strength": ABSOLUTE_STRENGTH,
-    "aroon": AROON,
     "wae": WAE,
 }
 

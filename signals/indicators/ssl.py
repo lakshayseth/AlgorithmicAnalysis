@@ -27,7 +27,6 @@ class SSL(Signal):
     
     def test(self, df):
         diff = df["ssl_up"] - df["ssl_down"]
-    
         bull_signal = (diff.shift(1) <= 0) & (diff > 0)
         bear_signal = (diff.shift(1) >= 0) & (diff < 0)
     
@@ -36,19 +35,28 @@ class SSL(Signal):
     def analyze(self, df):
         if len(df) < 2:
             return None
-    
         c, p = df.iloc[-1], df.iloc[-2]
-    
-        if any(pd.isna(x) for x in [
-            c["ssl_up"], c["ssl_down"],
-            p["ssl_up"], p["ssl_down"]
-        ]):
+        if any(pd.isna(x) for x in [c["ssl_up"], c["ssl_down"], p["ssl_up"], p["ssl_down"]]):
             return None
-    
         if c["ssl_up"] >= c["ssl_down"] and p["ssl_up"] < p["ssl_down"]:
             return "BUY"
-    
         if c["ssl_up"] < c["ssl_down"] and p["ssl_up"] >= p["ssl_down"]:
             return "SELL"
     
         return None
+    
+    def state(self, df):
+        if len(df) < 1:
+            return None
+        c = df.iloc[-1]
+        if any(pd.isna(x) for x in [c["ssl_up"], c["ssl_down"]]):
+            return None
+        if c["ssl_up"] >= c["ssl_down"]:
+            return "BUY"
+        if c["ssl_up"] < c["ssl_down"]:
+            return "SELL"
+    
+        return None
+    
+    def value(self, df):
+        return df["atr"].iloc[-1]
