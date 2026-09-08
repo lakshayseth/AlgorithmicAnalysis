@@ -20,17 +20,18 @@ class NNFX:
     def analyze(self, df):
         if len(df) < 2:
             return None
-
+    
         df = self.calculate(df)
-
+    
         c1_signal = self.c1.analyze(df)
         baseline_signal = self.baseline.analyze(df)
-
+    
         c1_state = self.c1.state(df)
         c2_state = self.c2.state(df)
         volume_state = self.volume.state(df)
         baseline_state = self.baseline.state(df)
-
+    
+        # Standard
         if (
             c1_signal == "BUY"
             and baseline_state == "BUY"
@@ -38,8 +39,8 @@ class NNFX:
             and volume_state == "BUY"
             and self.within_atr(df, "BUY")
         ):
-            return "NNFX Standard - Buy"
-
+            return self.trade_result(df, "NNFX Standard - Buy", "BUY")
+    
         if (
             c1_signal == "SELL"
             and baseline_state == "SELL"
@@ -47,14 +48,16 @@ class NNFX:
             and volume_state == "SELL"
             and self.within_atr(df, "SELL")
         ):
-            return "NNFX Standard - Sell"
-
+            return self.trade_result(df, "NNFX Standard - Sell", "SELL")
+    
+        # Standard CR
         if self.standard_cr(df, "BUY"):
-            return "NNFX Standard CR Buy"
-
+            return self.trade_result(df, "NNFX Standard CR Buy", "BUY")
+    
         if self.standard_cr(df, "SELL"):
-            return "NNFX Standard CR Sell"
-
+            return self.trade_result(df, "NNFX Standard CR Sell", "SELL")
+    
+        # Baseline
         if (
             baseline_signal == "BUY"
             and c1_state == "BUY"
@@ -63,8 +66,8 @@ class NNFX:
             and self.within_atr(df, "BUY")
             and self.c1_signal_within(df, "BUY", 7)
         ):
-            return "NNFX Baseline - Buy"
-
+            return self.trade_result(df, "NNFX Baseline - Buy", "BUY")
+    
         if (
             baseline_signal == "SELL"
             and c1_state == "SELL"
@@ -73,25 +76,29 @@ class NNFX:
             and self.within_atr(df, "SELL")
             and self.c1_signal_within(df, "SELL", 7)
         ):
-            return "NNFX Baseline - Sell"
-
+            return self.trade_result(df, "NNFX Baseline - Sell", "SELL")
+    
+        # Baseline CR
         if self.baseline_cr(df, "BUY"):
-            return "NNFX Baseline CR Buy"
-
+            return self.trade_result(df, "NNFX Baseline CR Buy", "BUY")
+    
         if self.baseline_cr(df, "SELL"):
-            return "NNFX Baseline CR Sell"
-
-        if self.pullback_entry(df, "BUY"): 
-            return "NNFX Pullback - Buy" 
-        if self.pullback_entry(df, "SELL"): 
-            return "NNFX Pullback - Sell"
-
+            return self.trade_result(df, "NNFX Baseline CR Sell", "SELL")
+    
+        # Pullback
+        if self.pullback_entry(df, "BUY"):
+            return self.trade_result(df, "NNFX Pullback - Buy", "BUY")
+    
+        if self.pullback_entry(df, "SELL"):
+            return self.trade_result(df, "NNFX Pullback - Sell", "SELL")
+    
+        # Continuation
         if self.continuation_entry(df, "BUY"):
-            return "NNFX Continuation Buy"
-        
+            return self.trade_result(df, "NNFX Continuation - Buy", "BUY")
+    
         if self.continuation_entry(df, "SELL"):
-            return "NNFX Continuation Sell"
-        
+            return self.trade_result(df, "NNFX Continuation - Sell", "SELL")
+    
         return None
 
 
@@ -220,6 +227,29 @@ class NNFX:
                 return True
 
         return False
+
+    def trade_result(self, df, signal, direction):
+        price = df["close"].iloc[-1]
+        atr = self.atr.value(df)
+    
+        if pd.isna(price) or pd.isna(atr):
+            return None
+    
+        if direction == "BUY":
+            take_profit = price + atr
+            stop_loss = price - (atr * 1.5)
+        else:
+            take_profit = price - atr
+            stop_loss = price + (atr * 1.5)
+    
+        return {
+            "signal": signal,
+            "direction": direction,
+            "price": price,
+            "atr": atr,
+            "take_profit": take_profit,
+            "stop_loss": stop_loss,
+        }
 
     def status(self, df):
         df = self.calculate(df)

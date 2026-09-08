@@ -30,7 +30,7 @@ nnfx = NNFX(
 )
 
 result = nnfx.analyze(df)
-print(result)
+print(f"NNFX: {result}")
 
 
 signal = get_signal("ichimoku_cloud")()

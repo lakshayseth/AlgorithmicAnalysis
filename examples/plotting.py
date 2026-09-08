@@ -14,7 +14,7 @@ df.set_index("time", inplace=True)
 plot
 indicators = {
     "atr": {"period": 14},
-    "ichimoku_cross": {},
+    "ichimoku_cloud": {},
     "ssl": {},
     "absolute_strength":{},
     "aroon": {},
