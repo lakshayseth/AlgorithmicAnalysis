@@ -2,7 +2,7 @@ import pandas as pd
 
 class NNFX:
 
-    def __init__(self, c1, c2, volume, baseline, atr):
+    def __init__(self, baseline, c1, c2, volume, atr):
         self.c1 = c1
         self.c2 = c2
         self.volume = volume

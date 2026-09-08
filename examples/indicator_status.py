@@ -4,7 +4,6 @@ import pandas as pd
 with open("../data.json") as f:
     data = json.load(f)
 df = pd.DataFrame(data["GLD"]["bars"])
-df = df.iloc[:-3]
 df["time"] = pd.to_datetime(df["time"], unit="s")
 df.set_index("time", inplace=True)
 
