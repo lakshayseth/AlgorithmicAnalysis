@@ -271,3 +271,170 @@ class NNFX:
             "Baseline CR Sell": self.baseline_cr(df, "SELL"),
             "RESULT": self.analyze(df),
         }
+
+    def trade_invalidated(self, df, direction):
+
+        reasons = []
+
+        if direction == "BUY":
+            if self.c1.state(df) == "SELL":
+                reasons.append("C1 flipped")
+            if self.c2.state(df) == "SELL":
+                reasons.append("C2 flipped")
+            if self.baseline.state(df) == "SELL":
+                reasons.append("Baseline flipped")
+            if not self.within_atr(df, "BUY"):
+                reasons.append("ATR exceeded")
+
+        elif direction == "SELL":
+            if self.c1.state(df) == "BUY":
+                reasons.append("C1 flipped")
+            if self.c2.state(df) == "BUY":
+                reasons.append("C2 flipped")
+            if self.baseline.state(df) == "BUY":
+                reasons.append("Baseline flipped")
+            if not self.within_atr(df, "SELL"):
+                reasons.append("ATR exceeded")
+
+        return reasons
+
+    def backtest(self, df):
+        trades_detail = []
+        i = 1
+        while i < len(df):
+            current_df = df.iloc[:i + 1].copy()
+            result = self.analyze(current_df)
+            if result is None:
+                i += 1
+                continue
+
+            entry = df.index[i]
+            entry_price = result["price"]
+            atr = result["atr"]
+            direction = result["direction"]
+
+            if direction == "BUY":
+                direction_name = "LONG"
+                win_target = entry_price + atr
+                loss_target = entry_price - (atr * 1.5)
+            else:
+                direction_name = "SHORT"
+                win_target = entry_price - atr
+                loss_target = entry_price + (atr * 1.5)
+
+            exit_time = None
+            exit_price = None
+            trade_result = "TIE"
+            tie_reason = None
+            exit_index = None
+
+            # Check candles after entry
+            for j in range(i + 1, len(df)):
+                high = df["high"].iloc[j]
+                low = df["low"].iloc[j]
+                # --------------------------------
+                # BUY
+                # --------------------------------
+                if direction == "BUY":
+                    # Both TP and SL hit on same candle
+                    if high >= win_target and low <= loss_target:
+                        trade_result = "LOSS"
+                        exit_price = loss_target
+                        exit_time = df.index[j]
+                        exit_index = j
+                        break
+
+                    # Take profit
+                    if high >= win_target:
+                        trade_result = "WIN"
+                        exit_price = win_target
+                        exit_time = df.index[j]
+                        exit_index = j
+                        break
+
+                    # Stop loss
+                    if low <= loss_target:
+                        trade_result = "LOSS"
+                        exit_price = loss_target
+                        exit_time = df.index[j]
+                        exit_index = j
+                        break
+
+                # --------------------------------
+                # SELL
+                # --------------------------------
+                else:
+
+                    # Both TP and SL hit on same candle
+                    if low <= win_target and high >= loss_target:
+                        trade_result = "LOSS"
+                        exit_price = loss_target
+                        exit_time = df.index[j]
+                        exit_index = j
+                        break
+
+                    # Take profit
+                    if low <= win_target:
+                        trade_result = "WIN"
+                        exit_price = win_target
+                        exit_time = df.index[j]
+                        exit_index = j
+                        break
+
+                    # Stop loss
+                    if high >= loss_target:
+                        trade_result = "LOSS"
+                        exit_price = loss_target
+                        exit_time = df.index[j]
+                        exit_index = j
+                        break
+                # --------------------------------
+                # SIGNAL INVALIDATION = TIE
+                # --------------------------------
+                candle_df = df.iloc[:j + 1].copy()
+                tie_reasons = self.trade_invalidated(candle_df, direction)
+
+                if tie_reasons:
+                    trade_result = "TIE"
+                    tie_reason = ", ".join(tie_reasons)
+                    exit_price = df["close"].iloc[j]
+                    exit_time = df.index[j]
+                    exit_index = j
+
+                    break
+
+            trades_detail.append({
+                "entry": entry,
+                "exit": exit_time,
+                "direction": direction_name,
+                "entry_price": entry_price,
+                "atr": atr,
+                "win_target": win_target,
+                "loss_target": loss_target,
+                "exit_price": exit_price,
+                "result": trade_result,
+                "tie_reason": tie_reason,
+            })
+
+            # If trade finished, skip forward to after the exit
+            if exit_index is not None:
+                i = exit_index + 1
+            else:
+                # No TP/SL or invalidation before end of data
+                i = len(df)
+
+        wins = sum(t["result"] == "WIN" for t in trades_detail)
+        losses = sum(t["result"] == "LOSS" for t in trades_detail)
+        ties = sum(t["result"] == "TIE" for t in trades_detail)
+        trades = len(trades_detail)
+
+        win_percentage = (wins / (wins + losses) * 100 if wins + losses > 0 else 0)
+
+        return {
+            "trades": trades,
+            "wins": wins,
+            "losses": losses,
+            "ties": ties,
+            "win_percentage": win_percentage,
+            "trades_detail": trades_detail,
+        }

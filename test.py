@@ -36,3 +36,6 @@ ichm = get_signal("ichimoku_cloud")()
 ichimoku = ICHIMOKU(ichm, atr)
 result = ichimoku.analyze(df)
 print(f"ICHIMOKU: {result}")
+
+results = nnfx.backtest(df)
+print(results)
