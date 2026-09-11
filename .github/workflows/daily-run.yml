@@ -1,0 +1,32 @@
+name: Run Trading Script Daily
+
+on:
+  schedule:
+    - cron: "30 21 * * *"
+  workflow_dispatch:
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4   # ✅ updated
+
+      - name: Set up Python
+        uses: actions/setup-python@v5  # ✅ updated
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install pandas numpy mplfinance
+          pip install --upgrade --no-cache-dir git+https://github.com/rongardF/tvdatafeed.git
+
+      - name: Run script
+        run: |
+          python -c "import main; main.run_all(period='D', delay=5)"
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
