@@ -1,0 +1,6 @@
+pandas
+numpy
+mplfinance
+logging
+warnings
+git+https://github.com/rongardF/tvdatafeed.git
