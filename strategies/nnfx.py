@@ -245,10 +245,10 @@ class NNFX:
         return {
             "signal": signal,
             "direction": direction,
-            "price": price,
-            "atr": atr,
-            "take_profit": take_profit,
-            "stop_loss": stop_loss,
+            "price": round(price,2),
+            "atr": round(atr,2),
+            "take_profit": round(take_profit,2),
+            "stop_loss": round(stop_loss,2),
         }
 
     def status(self, df):
