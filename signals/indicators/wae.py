@@ -16,6 +16,7 @@ class WAE(Signal):
         self.slowLength = slowLength
 
     def calculate(self, df):
+
         prev = df["close"].shift(1)
         tr = pd.concat([df["high"] - df["low"],
                         (df["high"] - prev).abs(),

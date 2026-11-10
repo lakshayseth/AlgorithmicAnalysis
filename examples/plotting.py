@@ -1,15 +1,24 @@
-import json
-import pandas as pd
+# ####To import data from JSON:
+# import json
+# import pandas as pd
+# with open("../data.json") as f:
+#     data = json.load(f)
+# df = pd.DataFrame(data["GLD"]["bars"])
+# df["time"] = pd.to_datetime(df["time"], unit="s")
+# df.set_index("time", inplace=True)
+# ####
 
 from graphing.plotter import plot
 
-with open("../data.json") as f:
-    data = json.load(f)
-df = pd.DataFrame(data["GLD"]["bars"])
-df = df.iloc[:-3]
-df["time"] = pd.to_datetime(df["time"], unit="s")
-df.set_index("time", inplace=True)
-# print(df)
+from data.instrument import instrument
+from data.tickers import *
+
+symbol = "AUDCAD"
+exchange = "OANDA"
+interval = "D"
+
+info = instrument(symbol, exchange, interval)
+df = info.data
 
 plot
 indicators = {

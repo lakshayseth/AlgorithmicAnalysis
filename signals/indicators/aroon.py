@@ -11,6 +11,7 @@ class AROON(Signal):
         self.length = length
 
     def calculate(self, df):
+
         highs, lows = df["high"].values, df["low"].values
         up, down = np.full(len(df), np.nan), np.full(len(df), np.nan)
 

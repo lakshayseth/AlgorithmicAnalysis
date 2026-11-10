@@ -283,8 +283,6 @@ class NNFX:
                 reasons.append("C2 flipped")
             if self.baseline.state(df) == "SELL":
                 reasons.append("Baseline flipped")
-            if not self.within_atr(df, "BUY"):
-                reasons.append("ATR exceeded")
 
         elif direction == "SELL":
             if self.c1.state(df) == "BUY":
@@ -293,8 +291,6 @@ class NNFX:
                 reasons.append("C2 flipped")
             if self.baseline.state(df) == "BUY":
                 reasons.append("Baseline flipped")
-            if not self.within_atr(df, "SELL"):
-                reasons.append("ATR exceeded")
 
         return reasons
 

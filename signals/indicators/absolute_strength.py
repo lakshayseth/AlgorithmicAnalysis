@@ -12,6 +12,7 @@ class ABSOLUTE_STRENGTH(Signal):
         self.smooth = smooth
 
     def calculate(self, df):
+
         diff = df["close"].diff()
         bulls = 0.5 * (np.abs(diff) + diff)
         bears = 0.5 * (np.abs(diff) - diff)

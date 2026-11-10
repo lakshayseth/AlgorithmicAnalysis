@@ -14,6 +14,7 @@ class ICHIMOKU_CLOUD(Signal):
         self.lagging_span = lagging_span
 
     def calculate(self, df):
+
         df["Tankan_sen"] = (df["high"].rolling(self.conversion_line).max() + df["low"].rolling(self.conversion_line).min()) / 2
         df["Kijun_sen"] = (df["high"].rolling(self.base_line).max() + df["low"].rolling(self.base_line).min()) / 2
         df["Senkou_Span_A"] = ((df["Tankan_sen"] + df["Kijun_sen"]) / 2).shift(self.lagging_span)

@@ -9,7 +9,7 @@ class ATR(Signal):
         self.period = period
 
     def calculate(self, df):
-            
+
         high_low = df['high'] - df['low']
         high_close = (df['high'] - df['close'].shift()).abs()
         low_close = (df['low'] - df['close'].shift()).abs()

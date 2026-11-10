@@ -1,21 +1,28 @@
+# ####To import data from JSON:
+# import json
+# import pandas as pd
+# with open("../data.json") as f:
+#     data = json.load(f)
+# df = pd.DataFrame(data["GLD"]["bars"])
+# df["time"] = pd.to_datetime(df["time"], unit="s")
+# df.set_index("time", inplace=True)
+# ####
+
+from data.instrument import instrument
+from data.tickers import *
+
+symbol = "NZDJPY"
+exchange = "OANDA"
+interval = "D"
+
+info = instrument(symbol, exchange, interval)
+df = info.data
+
 from signals.core.registry import get_signal
 from strategies.nnfx import NNFX 
 from strategies.ichimoku import ICHIMOKU
 import pandas as pd
 
-####
-#### EDIT THIS 
-import json
-with open("data.json") as f:
-    data = json.load(f)
-df = pd.DataFrame(data["GLD"]["bars"])
-####
-####
-
-df["time"] = pd.to_datetime(df["time"], unit="s")
-df.set_index("time", inplace=True)
-
-df = df.iloc[:-3]
 baseline = get_signal("kijunsen")()
 c1 = get_signal("ssl")()
 c2 = get_signal("absolute_strength")()
@@ -31,11 +38,14 @@ nnfx = NNFX(
 result = nnfx.analyze(df)
 print(f"NNFX: {result}")
 
-df = df.iloc[:-4]
 ichm = get_signal("ichimoku_cloud")()
 ichimoku = ICHIMOKU(ichm, atr)
 result = ichimoku.analyze(df)
 print(f"ICHIMOKU: {result}")
 
 results = nnfx.backtest(df)
-print(results)
+# Convert trade dictionaries into separate columns
+trades_df = pd.json_normalize(results["trades_detail"])
+# Export to CSV
+trades_df.to_csv("backtest_strategy.csv", index=False)
+#print(results)

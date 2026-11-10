@@ -10,6 +10,7 @@ class SSL(Signal):
         self.length = length
 
     def calculate(self, df):
+
         high = df["high"].rolling(self.length).mean()
         low = df["low"].rolling(self.length).mean()
         hlv = pd.Series(np.where(df["close"] > high, 1, np.where(df["close"] < low, -1, np.nan)), index=df.index).ffill()

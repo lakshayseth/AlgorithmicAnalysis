@@ -14,6 +14,7 @@ class KIJUNSEN(Signal):
         self.base_line = base_line
 
     def calculate(self, df):
+
         df["Kijun_sen"] = (df["high"].rolling(self.base_line).max() + df["low"].rolling(self.base_line).min()) / 2
         return df
     

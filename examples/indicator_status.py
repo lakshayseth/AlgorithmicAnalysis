@@ -1,11 +1,23 @@
-import json
-import pandas as pd
+# ####To import data from JSON:
+# import json
+# import pandas as pd
+# with open("../data.json") as f:
+#     data = json.load(f)
+# df = pd.DataFrame(data["GLD"]["bars"])
+# df["time"] = pd.to_datetime(df["time"], unit="s")
+# df.set_index("time", inplace=True)
+# ####
 
-with open("../data.json") as f:
-    data = json.load(f)
-df = pd.DataFrame(data["GLD"]["bars"])
-df["time"] = pd.to_datetime(df["time"], unit="s")
-df.set_index("time", inplace=True)
+from data.instrument import instrument
+from data.tickers import *
+
+symbol = "XLC"
+exchange = "NYMEX"
+interval = "D"
+
+info = instrument(symbol, exchange, interval)
+dataset = info.data
+df = dataset.iloc[:-1].copy()
 
 from signals.core.registry import get_signal
 
