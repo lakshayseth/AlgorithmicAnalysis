@@ -81,7 +81,8 @@ class Signal(ABC):
         
             result = None
             exit_idx = None
-        
+            exit_price = None
+            
             for i in range(entry_position + 1, len(test_df)):
         
                 idx = test_df.index[i]
@@ -113,34 +114,46 @@ class Signal(ABC):
                 if hit_win and hit_loss:
                     result = "loss"
                     exit_idx = idx
+                    exit_price = loss_price
                     break
                 # Win
                 elif hit_win:
                     result = "win"
                     exit_idx = idx
+                    exit_price = win_price
                     break
                 # Loss
                 elif hit_loss:
                     result = "loss"
                     exit_idx = idx
+                    exit_price = loss_price
                     break
                 # Signal flipped
                 elif opposite_signal:
                     result = "tie"
                     exit_idx = idx
+                    exit_price = test_df.loc[idx, "close"]
                     break
+            if exit_price is not None:
+                if direction == 1:  # LONG / BUY
+                    net = exit_price - entry_price
+                else:  # SHORT / SELL
+                    net = entry_price - exit_price
+            else:
+                net = None
             # --------------------------------------------------
             # No result before end of dataframe
             # --------------------------------------------------
-            if result is None:
-                result = "tie"
-                exit_idx = test_df.index[-1]
+            # if result is None:
+            #     result = "tie"
+            #     exit_idx = test_df.index[-1]
+            #     exit_price = test_df.loc[exit_idx, "close"]
             # --------------------------------------------------
             # Store trade
             # --------------------------------------------------
             trades.append({"entry": entry_idx, "exit": exit_idx,
                 "direction": ("long" if direction == 1 else "short"),
-                "entry_price": entry_price, "atr": atr, "win_target": win_price, "loss_target": loss_price, "result": result})
+                "entry_price": entry_price, "atr": atr, "win_target": win_price, "loss_target": loss_price, "exit_price": exit_price, "result": result, "net": net})
         # --------------------------------------------------
         # Create trade DataFrame
         # --------------------------------------------------
@@ -159,9 +172,10 @@ class Signal(ABC):
             win_percentage = (wins / decided) * 100
         else:
             win_percentage = 0.0
-        
+
+        net_profit = sum(t["net"] for t in trades if t["net"] is not None)
         # --------------------------------------------------
         # Return results
         # --------------------------------------------------
         
-        return {"trades": len(trades_df), "wins": wins, "losses": losses, "ties": ties, "win_percentage": win_percentage, "trades_detail": trades_df}
+        return {"trades": len(trades_df), "wins": wins, "losses": losses, "ties": ties, "win_percentage": win_percentage, "net_profit": float(round(net_profit, 4)),"trades_detail": trades_df}

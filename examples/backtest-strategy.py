@@ -37,7 +37,7 @@ nnfx = NNFX(
 )
 result = nnfx.analyze(df)
 print(f"NNFX: {result}")
-#print(nnfx.status(df))
+print(nnfx.status(df))
 
 results = nnfx.backtest(df)
 # Convert trade dictionaries into separate columns
@@ -49,13 +49,13 @@ trades_df.to_csv("backtest_strategy.csv", index=False)
 ichm = get_signal("ichimoku_cloud")()
 ichimoku = ICHIMOKU(ichm, atr)
 result = ichimoku.analyze(df)
-print(f"ICHIMOKU: {result}")
-resutls = ichimoku.backtest(df)
+#print(f"ICHIMOKU: {result}")
+#resutls = ichimoku.backtest(df)
 # Convert trade dictionaries into separate columns
-trades_df = pd.json_normalize(results["trades_detail"])
+#trades_df = pd.json_normalize(results["trades_detail"])
 # Export to CSV
-trades_df.to_csv("backtest_strategy.csv", index=False)
-print(results)
+#trades_df.to_csv("backtest_strategy.csv", index=False)
+#print(results)
 
 
 

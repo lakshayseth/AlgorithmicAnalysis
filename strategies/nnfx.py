@@ -405,7 +405,7 @@ class NNFX:
                 else:  # SHORT
                     net = entry_price - exit_price
             else:
-                net = 0
+                net = None
 
             trades_detail.append({
                 "entry": entry,
@@ -435,7 +435,7 @@ class NNFX:
 
         win_percentage = (wins / (wins + losses) * 100 if wins + losses > 0 else 0)
 
-        net_profit = sum(t["net"] for t in trades_detail)
+        net_profit = sum(t["net"] for t in trades if t["net"] is not None)
         
         net_wins = sum(t["net"] for t in trades_detail if t["result"] == "WIN")
         net_losses = sum(t["net"] for t in trades_detail if t["result"] == "LOSS")

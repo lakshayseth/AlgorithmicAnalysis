@@ -24,7 +24,7 @@ from signals.core.registry import get_signal
 atr = get_signal("atr")(period=14)
 df = atr.calculate(df)
 
-icloud = get_signal("ichimoku_cloud")()
+icloud = get_signal("ichimoku_cross")()
 # Calculate SSL values
 df = icloud.calculate(df)
 
