@@ -11,8 +11,8 @@
 from data.instrument import instrument
 from data.tickers import *
 
-symbol = "XLC"
-exchange = "NYMEX"
+symbol = "NZDCHF"
+exchange = "OANDA"
 interval = "D"
 
 info = instrument(symbol, exchange, interval)

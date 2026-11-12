@@ -11,12 +11,12 @@
 from data.instrument import instrument
 from data.tickers import *
 
-symbol = "NZDJPY"
+symbol = "NZDCHF"
 exchange = "OANDA"
 interval = "D"
 
 info = instrument(symbol, exchange, interval)
-df = info.data
+df = info.data.iloc[:-1].copy()
 
 from signals.core.registry import get_signal
 
@@ -24,10 +24,10 @@ from signals.core.registry import get_signal
 atr = get_signal("atr")(period=14)
 df = atr.calculate(df)
 
-ssl = get_signal("ssl")()
+icloud = get_signal("ichimoku_cloud")()
 # Calculate SSL values
-df = ssl.calculate(df)
+df = icloud.calculate(df)
 
-results = ssl.test(df)
+results = icloud.test(df)
 results["trades_detail"].to_csv("backtest_indicator.csv", index=False)
 print(results)

@@ -399,6 +399,14 @@ class NNFX:
 
                     break
 
+            if exit_price is not None:
+                if direction == "BUY":
+                    net = exit_price - entry_price
+                else:  # SHORT
+                    net = entry_price - exit_price
+            else:
+                net = 0
+
             trades_detail.append({
                 "entry": entry,
                 "exit": exit_time,
@@ -410,6 +418,7 @@ class NNFX:
                 "exit_price": exit_price,
                 "result": trade_result,
                 "tie_reason": tie_reason,
+                "net": net,
             })
 
             # If trade finished, skip forward to after the exit
@@ -426,11 +435,21 @@ class NNFX:
 
         win_percentage = (wins / (wins + losses) * 100 if wins + losses > 0 else 0)
 
+        net_profit = sum(t["net"] for t in trades_detail)
+        
+        net_wins = sum(t["net"] for t in trades_detail if t["result"] == "WIN")
+        net_losses = sum(t["net"] for t in trades_detail if t["result"] == "LOSS")
+        net_ties = sum(t["net"] for t in trades_detail if t["result"] == "TIE")
+
         return {
             "trades": trades,
             "wins": wins,
             "losses": losses,
             "ties": ties,
             "win_percentage": win_percentage,
+            "net_profit": float(round(net_profit, 4)),
+            "net_wins": float(round(net_wins, 4)),
+            "net_losses": float(round(net_losses, 4)),
+            "net_ties": float(round(net_ties, 4)),
             "trades_detail": trades_detail,
         }

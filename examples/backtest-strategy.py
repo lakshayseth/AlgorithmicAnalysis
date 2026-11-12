@@ -11,12 +11,12 @@
 from data.instrument import instrument
 from data.tickers import *
 
-symbol = "NZDJPY"
+symbol = "NZDCHF"
 exchange = "OANDA"
 interval = "D"
 
 info = instrument(symbol, exchange, interval)
-df = info.data
+df = info.data.iloc[:-1].copy()
 
 from signals.core.registry import get_signal
 from strategies.nnfx import NNFX 
@@ -37,11 +37,7 @@ nnfx = NNFX(
 )
 result = nnfx.analyze(df)
 print(f"NNFX: {result}")
-
-ichm = get_signal("ichimoku_cloud")()
-ichimoku = ICHIMOKU(ichm, atr)
-result = ichimoku.analyze(df)
-print(f"ICHIMOKU: {result}")
+#print(nnfx.status(df))
 
 results = nnfx.backtest(df)
 # Convert trade dictionaries into separate columns
@@ -49,3 +45,17 @@ trades_df = pd.json_normalize(results["trades_detail"])
 # Export to CSV
 trades_df.to_csv("backtest_strategy.csv", index=False)
 #print(results)
+
+ichm = get_signal("ichimoku_cloud")()
+ichimoku = ICHIMOKU(ichm, atr)
+result = ichimoku.analyze(df)
+print(f"ICHIMOKU: {result}")
+resutls = ichimoku.backtest(df)
+# Convert trade dictionaries into separate columns
+trades_df = pd.json_normalize(results["trades_detail"])
+# Export to CSV
+trades_df.to_csv("backtest_strategy.csv", index=False)
+print(results)
+
+
+
