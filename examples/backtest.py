@@ -11,7 +11,7 @@
 from data.instrument import instrument
 from data.tickers import *
 
-symbol = "NZDCHF"
+symbol = "AUDCHF"
 exchange = "OANDA"
 interval = "D"
 

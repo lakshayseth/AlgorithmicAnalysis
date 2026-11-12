@@ -117,4 +117,5 @@ class ICHIMOKU_CLOUD(Signal):
         return None
 
     def value(self, df):
-        raise NotImplementedError
+        return 
+        df["Tankan_sen"].iloc[-1], df["Kijun_sen"].iloc[-1], df["Senkou_Span_A"].iloc[-1], df["Senkou_Span_B"].iloc[-1], df["Chikou_Span"].iloc[-1]

@@ -4,7 +4,7 @@ save_data_on_exit = True
 save_history = True
 save_non_project_files = False
 project_type = 'empty-project-type'
-recent_files = ['examples\\indicator_status.py', 'strategies\\ichimoku.py', 'strategies\\nnfx.py', 'examples\\plotting.py', 'signals\\indicators\\ssl.py', 'signals\\core\\base.py', 'main.py', 'examples\\backtest-strategy.py']
+recent_files = ['examples\\backtest-strategy.py', 'examples\\backtest.py', 'examples\\indicator_status.py', 'examples\\plotting.py', 'signals\\core\\base.py', 'strategies\\nnfx.py', 'signals\\indicators\\ichimoku_cross.py']
 
 [main]
 version = 0.2.0

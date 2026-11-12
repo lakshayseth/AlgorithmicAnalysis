@@ -69,4 +69,4 @@ class ABSOLUTE_STRENGTH(Signal):
         return None
 
     def value(self, df):
-        raise NotImplementedError
+        return df["bull_ema"].iloc[-1], df["bear_ema"].iloc[-1]

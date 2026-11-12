@@ -178,4 +178,4 @@ class Signal(ABC):
         # Return results
         # --------------------------------------------------
         
-        return {"trades": len(trades_df), "wins": wins, "losses": losses, "ties": ties, "win_percentage": win_percentage, "net_profit": float(round(net_profit, 4)),"trades_detail": trades_df}
+        return {"trades": wins+losses+ties, "wins": wins, "losses": losses, "ties": ties, "win_percentage": win_percentage, "net_profit": float(round(net_profit, 4)),"trades_detail": trades_df}

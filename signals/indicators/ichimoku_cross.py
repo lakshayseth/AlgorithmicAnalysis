@@ -32,7 +32,7 @@ class ICHIMOKU_CROSS(Signal):
     
         bull_signal = ((diff.shift(1) <= 0) & (diff > 0))
         bear_signal = ((diff.shift(1) >= 0) & (diff < 0))
-     
+
         return self.backtest(df, bull_signal, bear_signal)
     
     def analyze(self, df):
@@ -63,4 +63,4 @@ class ICHIMOKU_CROSS(Signal):
         return None
     
     def value(self, df):
-        raise NotImplementedError
+        return df["Tankan_sen"].iloc[-1], df["Kijun_sen"].iloc[-1]

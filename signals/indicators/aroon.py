@@ -67,4 +67,4 @@ class AROON(Signal):
         return None
 
     def value(self, df):
-        raise NotImplementedError
+        return df["aroon_up"].iloc[-1], df["aroon_down"].iloc[-1]

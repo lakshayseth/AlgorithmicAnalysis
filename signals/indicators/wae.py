@@ -95,4 +95,4 @@ class WAE(Signal):
         return None
 
     def value(self, df):
-        return df["atr"].iloc[-1]
+        return  df["deadzone"].iloc[-1], df["trend_up"].iloc[-1], df["trend_down"].iloc[-1], df["e1"].iloc[-1]

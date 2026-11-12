@@ -30,7 +30,7 @@ class SSL(Signal):
         diff = df["ssl_up"] - df["ssl_down"]
         bull_signal = (diff.shift(1) <= 0) & (diff > 0)
         bear_signal = (diff.shift(1) >= 0) & (diff < 0)
-    
+
         return self.backtest(df, bull_signal, bear_signal)
     
     def analyze(self, df):
@@ -60,4 +60,4 @@ class SSL(Signal):
         return None
     
     def value(self, df):
-        return df["atr"].iloc[-1]
+        return df["ssl_up"].iloc[-1], df["ssl_down"].iloc[-1]
