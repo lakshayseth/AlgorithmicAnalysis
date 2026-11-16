@@ -43,12 +43,12 @@ def main(a, b, c):
         print(symbol)
         
         info = instrument(symbol, exchange, c)
-        result = nnfx.analyze(info.data)
+        result = nnfx.execute(info.data)
         if result is not None:
             log.append(f"{symbol}: NNFX: {result}")
             print(symbol, result)
             
-        result2 = ichimoku.analyze(info.data)
+        result2 = ichimoku.execute(info.data)
         if result2 is not None:
             log.append(f"{symbol}: ICHIMOKU: {result2}")
             print(symbol, result2)
@@ -100,7 +100,7 @@ def run_all(period, delay):
 
     main(crypto, exchange_crypto, period)
     
-    send_email(log)
+    #send_email(log)
 
 if __name__ == '__main__':
     run_all(period='D', delay=5)

@@ -10,6 +10,7 @@ class NNFX:
         self.atr = atr
 
     def calculate(self, df):
+        df = df.copy()
         df = self.c1.calculate(df)
         df = self.c2.calculate(df)
         df = self.volume.calculate(df)
@@ -17,188 +18,81 @@ class NNFX:
         df = self.atr.calculate(df)
         return df
 
-    def analyze(self, df):
+    def get_signal(self, indicator, df):
+        states = indicator.get_state(df)
+
+        if len(states) < 2:
+            return False
+
+        previous = states.iloc[-2]
+        current = states.iloc[-1]
+
+        if pd.isna(previous) or pd.isna(current):
+            return False
+
+        return current if current != previous else False
+    
+    def execute(self, df):
         if len(df) < 2:
             return None
-    
+        
         df = self.calculate(df)
-    
-        c1_signal = self.c1.analyze(df)
-        baseline_signal = self.baseline.analyze(df)
-    
-        c1_state = self.c1.state(df)
-        c2_state = self.c2.state(df)
-        volume_state = self.volume.state(df)
-        baseline_state = self.baseline.state(df)
-    
+        
+        c1_signal = self.get_signal(self.c1, df)
+        baseline_signal = self.get_signal(self.baseline, df)
+        
+        c1_state = self.c1.get_state(df).iloc[-1]
+        c2_state = self.c2.get_state(df).iloc[-1]
+        volume_state = self.volume.get_state(df).iloc[-1]
+        baseline_state = self.baseline.get_state(df).iloc[-1]
+      
         # Standard
-        if (
-            c1_signal == "BUY"
-            and baseline_state == "BUY"
-            and c2_state == "BUY"
-            and volume_state == "BUY"
-            and self.within_atr(df, "BUY")
-        ):
+        if (c1_signal == 1 and baseline_state == 1 and c2_state == 1
+            and volume_state == 1 and self.within_atr(df, 1)):
             return self.trade_result(df, "NNFX Standard - Buy", "BUY")
-    
-        if (
-            c1_signal == "SELL"
-            and baseline_state == "SELL"
-            and c2_state == "SELL"
-            and volume_state == "SELL"
-            and self.within_atr(df, "SELL")
-        ):
+        
+        if (c1_signal == -1 and baseline_state == -1 and c2_state == -1
+            and volume_state == -1 and self.within_atr(df, -1)):
             return self.trade_result(df, "NNFX Standard - Sell", "SELL")
-    
+        
         # Standard CR
-        if self.standard_cr(df, "BUY"):
+        if self.standard_cr(df, 1):
             return self.trade_result(df, "NNFX Standard CR Buy", "BUY")
     
-        if self.standard_cr(df, "SELL"):
+        if self.standard_cr(df, -1):
             return self.trade_result(df, "NNFX Standard CR Sell", "SELL")
-    
+
         # Baseline
-        if (
-            baseline_signal == "BUY"
-            and c1_state == "BUY"
-            and c2_state == "BUY"
-            and volume_state == "BUY"
-            and self.within_atr(df, "BUY")
-            and self.c1_signal_within(df, "BUY", 7)
-        ):
+        if (baseline_signal == 1 and c1_state == 1 and c2_state == 1
+            and volume_state == 1 and self.within_atr(df, 1) and self.c1_signal_within(df, 1, 7)):
             return self.trade_result(df, "NNFX Baseline - Buy", "BUY")
     
-        if (
-            baseline_signal == "SELL"
-            and c1_state == "SELL"
-            and c2_state == "SELL"
-            and volume_state == "SELL"
-            and self.within_atr(df, "SELL")
-            and self.c1_signal_within(df, "SELL", 7)
-        ):
+        if (baseline_signal == -1 and c1_state == -1 and c2_state == -1
+            and volume_state == -1 and self.within_atr(df, -1) and self.c1_signal_within(df, -1, 7)):
             return self.trade_result(df, "NNFX Baseline - Sell", "SELL")
-    
+
         # Baseline CR
-        if self.baseline_cr(df, "BUY"):
+        if self.baseline_cr(df, 1):
             return self.trade_result(df, "NNFX Baseline CR Buy", "BUY")
     
-        if self.baseline_cr(df, "SELL"):
+        if self.baseline_cr(df, -1):
             return self.trade_result(df, "NNFX Baseline CR Sell", "SELL")
-    
+
         # Pullback
-        if self.pullback_entry(df, "BUY"):
+        if self.pullback_entry(df, 1):
             return self.trade_result(df, "NNFX Pullback - Buy", "BUY")
     
-        if self.pullback_entry(df, "SELL"):
-            return self.trade_result(df, "NNFX Pullback - Sell", "SELL")
-    
+        if self.pullback_entry(df, -1):
+            return self.trade_result(df, "NNFX Pullback - Sell", "SELL")    
+
         # Continuation
-        if self.continuation_entry(df, "BUY"):
+        if self.continuation_entry(df, 1):
             return self.trade_result(df, "NNFX Continuation - Buy", "BUY")
     
-        if self.continuation_entry(df, "SELL"):
+        if self.continuation_entry(df, -1):
             return self.trade_result(df, "NNFX Continuation - Sell", "SELL")
     
         return None
-
-
-    def standard_cr(self, df, direction):
-        if len(df) < 2:
-            return False
-    
-        previous = df.iloc[:-1]
-    
-        # Previous candle: C1 signal + baseline agreement + within ATR
-        if (
-            self.c1.analyze(previous) != direction
-            or self.baseline.state(previous) != direction
-            or not self.within_atr(previous, direction)
-        ):
-            return False
-    
-        # Current candle: all confirmations agree
-        return (
-            self.baseline.state(df) == direction
-            and self.c1.state(df) == direction
-            and self.c2.state(df) == direction
-            and self.volume.state(df) == direction
-            and self.within_atr(df, direction)
-        )
-
-    def baseline_cr(self, df, direction):
-        if len(df) < 2:
-            return False
-    
-        previous = df.iloc[:-1]
-    
-        # Previous candle: baseline signal + C1 agreement + within ATR
-        if (
-            self.baseline.analyze(previous) != direction
-            or self.c1.state(previous) != direction
-            or not self.within_atr(previous, direction)
-            or not self.c1_signal_within(previous, direction, 7)
-        ):
-            return False
-    
-        # Current candle: all confirmations agree
-        return (
-            self.baseline.state(df) == direction
-            and self.c1.state(df) == direction
-            and self.c2.state(df) == direction
-            and self.volume.state(df) == direction
-            and self.within_atr(df, direction)
-        )
-
-    def pullback_entry(self, df, direction):
-        if len(df) < 2:
-            return False
-    
-        previous = df.iloc[:-1]
-    
-        # Previous candle: baseline signal + C1 agreement
-        if self.baseline.analyze(previous) != direction:
-            return False
-    
-        if self.c1.state(previous) != direction:
-            return False
-    
-        # Previous candle must be beyond 1 ATR
-        if self.within_atr(previous, direction):
-            return False
-    
-        # Current candle: all confirmations agree
-        return (
-            self.baseline.state(df) == direction
-            and self.c1.state(df) == direction
-            and self.c2.state(df) == direction
-            and self.volume.state(df) == direction
-            and self.within_atr(df, direction)
-        )
-
-    def continuation_entry(self, df, direction):
-        if len(df) < 3 or self.c1.analyze(df) != direction or self.c2.state(df) != direction:
-            return False
-    
-        opposite = "SELL" if direction == "BUY" else "BUY"
-    
-        opp_idx = next(
-            (i for i in range(len(df) - 2, 0, -1)
-             if self.c1.analyze(df.iloc[:i + 1]) == opposite), None
-        )
-        if opp_idx is None:
-            return False
-    
-        prev_idx = next(
-            (i for i in range(opp_idx - 1, 0, -1)
-             if self.c1.analyze(df.iloc[:i + 1]) == direction), None
-        )
-        if prev_idx is None:
-            return False
-    
-        close = df["close"].iloc[prev_idx:]
-        baseline = self.baseline.value(df.iloc[prev_idx:])
-    
-        return (close > baseline).all() if direction == "BUY" else (close < baseline).all()
 
     def within_atr(self, df, direction):
         price = df["close"].iloc[-1]
@@ -208,26 +102,119 @@ class NNFX:
         if any(pd.isna(x) for x in [price, baseline, atr]):
             return False
 
-        if direction == "BUY":
+        if direction == 1:
             return price <= baseline + atr
 
-        if direction == "SELL":
+        if direction == -1:
             return price >= baseline - atr
-
+        
         return False
+
+    def standard_cr(self, df, direction):
+        if len(df) < 2:
+            return False
+        previous = df.iloc[:-1]
+        c1_signal = self.get_signal(self.c1, previous)
+        baseline_state = self.baseline.get_state(previous).iloc[-1]
+        # Previous candle: C1 signal + baseline agreement + within ATR
+        if (c1_signal != direction or baseline_state != direction or not self.within_atr(previous, direction)):
+            return False
+        # Current candle: all confirmations agree
+        return (self.baseline.get_state(df).iloc[-1] == direction
+            and self.c1.get_state(df).iloc[-1] == direction
+            and self.c2.get_state(df).iloc[-1] == direction
+            and self.volume.get_state(df).iloc[-1] == direction
+            and self.within_atr(df, direction))   
 
     def c1_signal_within(self, df, direction, candles=7):
         if len(df) < 2:
             return False
-
+        states = self.c1.get_state(df)
+        switches = ((states == direction) & (states.shift(1) != direction))
         start = max(1, len(df) - candles)
+        return switches.iloc[start:-1].any()
 
-        for i in range(start, len(df) - 1):
-            if self.c1.analyze(df.iloc[:i + 1]) == direction:
-                return True
+    def baseline_cr(self, df, direction):
+        if len(df) < 2:
+            return False
+        previous = df.iloc[:-1]
+        baseline_signal = self.get_signal(self.baseline, previous)
+        c1_state = self.c1.get_state(previous).iloc[-1]
+        # Previous candle: baseline signal + C1 agreement + within ATR
+        if (baseline_signal != direction or c1_state != direction
+            or not self.within_atr(previous, direction) or not self.c1_signal_within(previous, direction, 7)):
+            return False
 
-        return False
+        # Current candle: all confirmations agree
+        return (
+            self.baseline.get_state(df).iloc[-1] == direction
+            and self.c1.get_state(df).iloc[-1] == direction
+            and self.c2.get_state(df).iloc[-1] == direction
+            and self.volume.get_state(df).iloc[-1] == direction
+            and self.within_atr(df, direction)
+        )
 
+    def pullback_entry(self, df, direction):
+        if len(df) < 2:
+            return False
+        previous = df.iloc[:-1]
+        baseline_signal = self.get_signal(self.baseline, previous)
+        c1_state = self.c1.get_state(previous).iloc[-1]
+        # Previous candle: baseline signal + C1 agreement
+        if baseline_signal != direction:
+            return False
+        if c1_state != direction:
+            return False
+        # Previous candle must be beyond 1 ATR
+        if self.within_atr(previous, direction):
+            return False
+    
+        # Current candle: all confirmations agree
+        return (
+            self.baseline.get_state(df).iloc[-1] == direction
+            and self.c1.get_state(df).iloc[-1] == direction
+            and self.c2.get_state(df).iloc[-1] == direction
+            and self.volume.get_state(df).iloc[-1] == direction
+            and self.within_atr(df, direction)
+        )
+
+    def continuation_entry(self, df, direction):
+        if len(df) < 3:
+            return False
+
+        c1_states = self.c1.get_state(df)
+        c2_states = self.c2.get_state(df)
+
+        if (c1_states.iloc[-1] != direction or c1_states.iloc[-2] == direction or c2_states.iloc[-1] != direction):
+            return False
+
+        opposite = -direction
+        switches = c1_states.ne(c1_states.shift(1))
+
+        opp_indices = [i for i in range(len(df) - 2, 0, -1)
+            if switches.iloc[i] and c1_states.iloc[i] == opposite]
+
+        if not opp_indices:
+            return False
+
+        opp_idx = opp_indices[0]
+
+        prev_indices = [i for i in range(opp_idx - 1, 0, -1)
+            if switches.iloc[i] and c1_states.iloc[i] == direction]
+
+        if not prev_indices:
+            return False
+
+        prev_idx = prev_indices[0]
+
+        close = df["close"].iloc[prev_idx:]
+        baseline = self.baseline.value(df.iloc[prev_idx:])
+
+        if direction == 1:
+            return (close > baseline).all()
+
+        return (close < baseline).all()
+    
     def trade_result(self, df, signal, direction):
         price = df["close"].iloc[-1]
         atr = self.atr.value(df)
@@ -251,158 +238,117 @@ class NNFX:
             "stop_loss": float(round(stop_loss, 4)),
         }
 
-    def status(self, df):
-        df = self.calculate(df)
-
-        return {
-            "C1 Signal": self.c1.analyze(df),
-            "C1 State": self.c1.state(df),
-            "C2 State": self.c2.state(df),
-            "Volume State": self.volume.state(df),
-            "Baseline Signal": self.baseline.analyze(df),
-            "Baseline State": self.baseline.state(df),
-            "C1 Buy <7": self.c1_signal_within(df, "BUY", 7),
-            "C1 Sell <7": self.c1_signal_within(df, "SELL", 7),
-            "Within ATR Buy": self.within_atr(df, "BUY"),
-            "Within ATR Sell": self.within_atr(df, "SELL"),
-            "Standard CR Buy": self.standard_cr(df, "BUY"),
-            "Standard CR Sell": self.standard_cr(df, "SELL"),
-            "Baseline CR Buy": self.baseline_cr(df, "BUY"),
-            "Baseline CR Sell": self.baseline_cr(df, "SELL"),
-            "RESULT": self.analyze(df),
-        }
-
     def trade_invalidated(self, df, direction):
-
         reasons = []
-
+    
+        c1_state = self.c1.get_state(df).iloc[-1]
+        c2_state = self.c2.get_state(df).iloc[-1]
+        baseline_state = self.baseline.get_state(df).iloc[-1]
+    
         if direction == "BUY":
-            if self.c1.state(df) == "SELL":
+            if c1_state == -1:
                 reasons.append("C1 flipped")
-            if self.c2.state(df) == "SELL":
+            if c2_state == -1:
                 reasons.append("C2 flipped")
-            if self.baseline.state(df) == "SELL":
+            if baseline_state == -1:
                 reasons.append("Baseline flipped")
-
+    
         elif direction == "SELL":
-            if self.c1.state(df) == "BUY":
+            if c1_state == 1:
                 reasons.append("C1 flipped")
-            if self.c2.state(df) == "BUY":
+            if c2_state == 1:
                 reasons.append("C2 flipped")
-            if self.baseline.state(df) == "BUY":
+            if baseline_state == 1:
                 reasons.append("Baseline flipped")
-
+    
         return reasons
-
+    
     def backtest(self, df):
         trades_detail = []
         i = 1
         while i < len(df):
             current_df = df.iloc[:i + 1].copy()
-            result = self.analyze(current_df)
+            result = self.execute(current_df)
             if result is None:
                 i += 1
                 continue
-
             entry = df.index[i]
             entry_price = result["price"]
             atr = result["atr"]
             direction = result["direction"]
-
+            signal = result["signal"]
             if direction == "BUY":
-                direction_name = "LONG"
+                direction_name = "Long"
                 win_target = entry_price + atr
                 loss_target = entry_price - (atr * 1.5)
             else:
-                direction_name = "SHORT"
+                direction_name = "Short"
                 win_target = entry_price - atr
                 loss_target = entry_price + (atr * 1.5)
-
             exit_time = None
             exit_price = None
-            trade_result = "TIE"
+            trade_result = None
             tie_reason = None
             exit_index = None
-
             # Check candles after entry
             for j in range(i + 1, len(df)):
                 high = df["high"].iloc[j]
                 low = df["low"].iloc[j]
-                # --------------------------------
                 # BUY
-                # --------------------------------
                 if direction == "BUY":
-                    # Both TP and SL hit on same candle
                     if high >= win_target and low <= loss_target:
                         trade_result = "LOSS"
                         exit_price = loss_target
                         exit_time = df.index[j]
                         exit_index = j
                         break
-
-                    # Take profit
                     if high >= win_target:
                         trade_result = "WIN"
                         exit_price = win_target
                         exit_time = df.index[j]
                         exit_index = j
                         break
-
-                    # Stop loss
                     if low <= loss_target:
                         trade_result = "LOSS"
                         exit_price = loss_target
                         exit_time = df.index[j]
                         exit_index = j
                         break
-
-                # --------------------------------
                 # SELL
-                # --------------------------------
                 else:
-
-                    # Both TP and SL hit on same candle
                     if low <= win_target and high >= loss_target:
                         trade_result = "LOSS"
                         exit_price = loss_target
                         exit_time = df.index[j]
                         exit_index = j
                         break
-
-                    # Take profit
                     if low <= win_target:
                         trade_result = "WIN"
                         exit_price = win_target
                         exit_time = df.index[j]
                         exit_index = j
                         break
-
-                    # Stop loss
                     if high >= loss_target:
                         trade_result = "LOSS"
                         exit_price = loss_target
                         exit_time = df.index[j]
                         exit_index = j
                         break
-                # --------------------------------
-                # SIGNAL INVALIDATION = TIE
-                # --------------------------------
-                candle_df = df.iloc[:j + 1].copy()
+                # SIGNAL INVALIDATION
+                candle_df = self.calculate(df.iloc[:j + 1].copy())
                 tie_reasons = self.trade_invalidated(candle_df, direction)
-
                 if tie_reasons:
                     trade_result = "TIE"
                     tie_reason = ", ".join(tie_reasons)
                     exit_price = df["close"].iloc[j]
                     exit_time = df.index[j]
                     exit_index = j
-
                     break
-
+            # Calculate net profit
             if exit_price is not None:
                 if direction == "BUY":
                     net = exit_price - entry_price
-                else:  # SHORT
+                else:
                     net = entry_price - exit_price
             else:
                 net = 0
@@ -411,6 +357,7 @@ class NNFX:
                 "entry": entry,
                 "exit": exit_time,
                 "direction": direction_name,
+                "signal": signal,
                 "entry_price": entry_price,
                 "atr": atr,
                 "win_target": win_target,
@@ -420,23 +367,18 @@ class NNFX:
                 "tie_reason": tie_reason,
                 "net": net,
             })
-
-            # If trade finished, skip forward to after the exit
+            # Skip forward after trade closes
             if exit_index is not None:
                 i = exit_index + 1
             else:
-                # No TP/SL or invalidation before end of data
                 i = len(df)
-
+        # Statistics
         wins = sum(t["result"] == "WIN" for t in trades_detail)
         losses = sum(t["result"] == "LOSS" for t in trades_detail)
         ties = sum(t["result"] == "TIE" for t in trades_detail)
-        trades = wins+losses+ties
-
+        trades = wins + losses + ties
         win_percentage = (wins / (wins + losses) * 100 if wins + losses > 0 else 0)
-
         net_profit = sum(t["net"] for t in trades_detail)
-        
         net_wins = sum(t["net"] for t in trades_detail if t["result"] == "WIN")
         net_losses = sum(t["net"] for t in trades_detail if t["result"] == "LOSS")
         net_ties = sum(t["net"] for t in trades_detail if t["result"] == "TIE")

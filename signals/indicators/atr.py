@@ -9,7 +9,6 @@ class ATR(Signal):
         self.period = period
 
     def calculate(self, df):
-
         high_low = df['high'] - df['low']
         high_close = (df['high'] - df['close'].shift()).abs()
         low_close = (df['low'] - df['close'].shift()).abs()
@@ -25,11 +24,11 @@ class ATR(Signal):
     def plot(self, df, panel):
         return [mpf.make_addplot(df["atr"], panel=panel, color="blue", width=1, ylabel=self.plot_panel)]
 
-    def analyze(self, df):
+    def get_state(self, df):
         raise NotImplementedError
-    
-    def state(self, df):
+
+    def backtest(self, df):
         raise NotImplementedError
-    
+        
     def value(self, df):
         return df["atr"].iloc[-1]

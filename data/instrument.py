@@ -32,6 +32,8 @@ class instrument:
                 self.interval = Interval.in_daily
             case '4H':
                 self.interval = Interval.in_4_hour
+            case '1H':
+                self.interval = Interval.in_1_hour
             case _:
                 raise ValueError("Timeframe Input not valid: 'W', 'D', '4H'.")
         

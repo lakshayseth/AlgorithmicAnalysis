@@ -1,5 +1,5 @@
-import numpy as np
 import pandas as pd
+import numpy as np
 import mplfinance as mpf
 from ..core.base import Signal
 
@@ -10,7 +10,6 @@ class SSL(Signal):
         self.length = length
 
     def calculate(self, df):
-
         high = df["high"].rolling(self.length).mean()
         low = df["low"].rolling(self.length).mean()
         hlv = pd.Series(np.where(df["close"] > high, 1, np.where(df["close"] < low, -1, np.nan)), index=df.index).ffill()
@@ -26,38 +25,16 @@ class SSL(Signal):
         return [mpf.make_addplot(df["ssl_up"], panel=panel, color="green", width=1),
             mpf.make_addplot(df["ssl_down"], panel=panel, color="red", width=1)]
     
-    def test(self, df):
+    def get_state(self, df):
         diff = df["ssl_up"] - df["ssl_down"]
-        bull_signal = (diff.shift(1) <= 0) & (diff > 0)
-        bear_signal = (diff.shift(1) >= 0) & (diff < 0)
-
-        return self.backtest(df, bull_signal, bear_signal)
+        state = pd.Series(float("nan"), index=df.index)
+        state.loc[diff > 0] = 1
+        state.loc[diff < 0] = -1
+        state.loc[diff == 0] = 0
+        return state
     
-    def analyze(self, df):
-        if len(df) < 2:
-            return None
-        c, p = df.iloc[-1], df.iloc[-2]
-        if any(pd.isna(x) for x in [c["ssl_up"], c["ssl_down"], p["ssl_up"], p["ssl_down"]]):
-            return None
-        if c["ssl_up"] >= c["ssl_down"] and p["ssl_up"] < p["ssl_down"]:
-            return "BUY"
-        if c["ssl_up"] < c["ssl_down"] and p["ssl_up"] >= p["ssl_down"]:
-            return "SELL"
-    
-        return None
-    
-    def state(self, df):
-        if len(df) < 1:
-            return None
-        c = df.iloc[-1]
-        if any(pd.isna(x) for x in [c["ssl_up"], c["ssl_down"]]):
-            return None
-        if c["ssl_up"] >= c["ssl_down"]:
-            return "BUY"
-        if c["ssl_up"] < c["ssl_down"]:
-            return "SELL"
-    
-        return None
+    def backtest(self, df):
+        return self.test(df)
     
     def value(self, df):
         return df["ssl_up"].iloc[-1], df["ssl_down"].iloc[-1]

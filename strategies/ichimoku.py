@@ -1,229 +1,144 @@
 import pandas as pd
 
-
 class ICHIMOKU:
 
-    def __init__(self, ichimoku, atr):
-        self.ichimoku = ichimoku
+    def __init__(self, ich, atr):
+        self.ich = ich
         self.atr = atr
-
+        
     def calculate(self, df):
-        df = self.ichimoku.calculate(df)
+        df = df.copy()
+        df = self.ich.calculate(df)
         df = self.atr.calculate(df)
         return df
-
-    def analyze(self, df):
+    
+    def execute(self, df):
         if len(df) < 2:
             return None
-
         df = self.calculate(df)
+        state = self.ich.get_state(df)
+        previous_state = state.shift(1)
 
-        signal = self.ichimoku.analyze(df)
+        signals = pd.Series(None, index=df.index, dtype=object)
 
-        if signal == "BUY":
-            return self.trade_result(df, "Ichimoku - Buy", "BUY")
-
-        if signal == "SELL":
-            return self.trade_result(df, "Ichimoku - Sell", "SELL")
-
-        return None
-
-    def trade_result(self, df, signal, direction):
-        price = df["close"].iloc[-1]
-        atr = self.atr.value(df)
-
-        if pd.isna(price) or pd.isna(atr):
-            return None
-
-        if direction == "BUY":
-            take_profit = price + atr
-            stop_loss = price - (atr * 1.5)
-        else:
-            take_profit = price - atr
-            stop_loss = price + (atr * 1.5)
-
-        return {
-            "signal": signal,
-            "direction": direction,
-            "price": float(round(price, 4)),
-            "atr": float(round(atr, 4)),
-            "take_profit": float(round(take_profit, 4)),
-            "stop_loss": float(round(stop_loss, 4)),
-        }
-
-    def trade_invalidated(self, df, direction):
+        bullish = (state == 1) & (previous_state != 1) & previous_state.notna()
+        bearish = (state == -1) & (previous_state != -1) & previous_state.notna()
         
-        reasons = []
-
-        signal = self.ichimoku.state(df)
-
-        if direction == "BUY" and signal == "SELL":
-            reasons.append("Ichimoku flipped")
-
-        elif direction == "SELL" and signal == "BUY":
-            reasons.append("Ichimoku flipped")
-
-        return reasons
-
+        signals.loc[bullish] = "Buy"
+        signals.loc[bearish] = "Sell"
+        result = signals.iloc[-1]
+        return None if pd.isna(result) else result
+    
     def backtest(self, df):
-
         trades_detail = []
         i = 1
-
-        while i < len(df):
-            current_df = df.iloc[:i + 1].copy()
-            result = self.analyze(current_df)
-
+        while i < len(df) - 1:
+            current_df = self.calculate(df.iloc[:i + 1].copy())
+            result = self.execute(current_df)
             if result is None:
                 i += 1
                 continue
-
-            entry = df.index[i]
-            entry_price = result["price"]
-            atr = result["atr"]
-            direction = result["direction"]
-
-            if direction == "BUY":
-                direction_name = "LONG"
-                win_target = entry_price + atr
-                loss_target = entry_price - (atr * 1.5)
+            direction = result
+            entry_time = current_df.index[-1]
+            entry_price = current_df["close"].iloc[-1]
+            atr_value = self.atr.value(current_df)
+            if pd.isna(atr_value) or atr_value <= 0:
+                i += 1
+                continue
+            if direction == "Buy":
+                take_profit = entry_price + atr_value
+                stop_loss = entry_price - (1.5 * atr_value)
             else:
-                direction_name = "SHORT"
-                win_target = entry_price - atr
-                loss_target = entry_price + (atr * 1.5)
-
+                take_profit = entry_price - atr_value
+                stop_loss = entry_price + (1.5 * atr_value)
             exit_time = None
             exit_price = None
-            trade_result = "TIE"
-            tie_reason = None
-            exit_index = None
-
+            trade_result = None
+            net = 0
             for j in range(i + 1, len(df)):
-                high = df["high"].iloc[j]
-                low = df["low"].iloc[j]
-
-                if direction == "BUY":
-                    if high >= win_target and low <= loss_target:
-                        trade_result = "LOSS"
-                        exit_price = loss_target
-                        exit_time = df.index[j]
-                        exit_index = j
-                        break
-
-                    if high >= win_target:
-                        trade_result = "WIN"
-                        exit_price = win_target
-                        exit_time = df.index[j]
-                        exit_index = j
-                        break
-
-                    if low <= loss_target:
-                        trade_result = "LOSS"
-                        exit_price = loss_target
-                        exit_time = df.index[j]
-                        exit_index = j
-                        break
-
+                candle = df.iloc[j]
+                high = candle["high"]
+                low = candle["low"]
+                # Check TP and SL
+                if direction == "Buy":
+                    tp_hit = high >= take_profit
+                    sl_hit = low <= stop_loss
                 else:
-                    if low <= win_target and high >= loss_target:
-                        trade_result = "LOSS"
-                        exit_price = loss_target
-                        exit_time = df.index[j]
-                        exit_index = j
-                        break
-
-                    if low <= win_target:
-                        trade_result = "WIN"
-                        exit_price = win_target
-                        exit_time = df.index[j]
-                        exit_index = j
-                        break
-
-                    if high >= loss_target:
-                        trade_result = "LOSS"
-                        exit_price = loss_target
-                        exit_time = df.index[j]
-                        exit_index = j
-                        break
-
-                candle_df = df.iloc[:j + 1].copy()
-                tie_reasons = self.trade_invalidated(candle_df, direction)
-
-                if tie_reasons:
-                    trade_result = "TIE"
-                    tie_reason = ", ".join(tie_reasons)
-                    exit_price = df["close"].iloc[j]
+                    tp_hit = low <= take_profit
+                    sl_hit = high >= stop_loss
+                # Both TP and SL hit
+                if tp_hit and sl_hit:
                     exit_time = df.index[j]
-                    exit_index = j
+                    exit_price = stop_loss
+                    trade_result = "LOSS"
+                    net = -1.5
                     break
-
-            if exit_price is not None:
-                if direction == "BUY":
-                    net = exit_price - entry_price
-                else:
-                    net = entry_price - exit_price
-            else:
-                net = None
-
+                # Take profit
+                elif tp_hit:
+                    exit_time = df.index[j]
+                    exit_price = take_profit
+                    trade_result = "WIN"
+                    net = 1
+                    break
+                # Stop loss
+                elif sl_hit:
+                    exit_time = df.index[j]
+                    exit_price = stop_loss
+                    trade_result = "LOSS"
+                    net = -1.5
+                    break
+                # Check Ichimoku state change
+                candle_df = self.calculate(df.iloc[:j + 1].copy())
+                state = self.ich.get_state(candle_df).iloc[-1]
+                if pd.isna(state):
+                    continue
+                if direction == "Buy" and state != 1:
+                    exit_time = df.index[j]
+                    exit_price = candle["close"]
+                    trade_result = "TIE"
+                    net = 0
+                    break
+                elif direction == "Sell" and state != -1:
+                    exit_time = df.index[j]
+                    exit_price = candle["close"]
+                    trade_result = "TIE"
+                    net = 0
+                    break
             trades_detail.append({
-                "entry": entry,
-                "exit": exit_time,
-                "direction": direction_name,
+                "entry_time": entry_time,
+                "exit_time": exit_time,
+                "direction": direction,
                 "entry_price": entry_price,
-                "atr": atr,
-                "win_target": win_target,
-                "loss_target": loss_target,
                 "exit_price": exit_price,
+                "take_profit": take_profit,
+                "stop_loss": stop_loss,
                 "result": trade_result,
-                "tie_reason": tie_reason,
-                "net": net,
+                "net": net
             })
-
-            if exit_index is not None:
-                i = exit_index + 1
+            if exit_time is not None:
+                i = df.index.get_loc(exit_time) + 1
             else:
-                i = len(df)
+                # Trade remains active at the end of available data
+                break
 
+        # Statistics
         wins = sum(t["result"] == "WIN" for t in trades_detail)
         losses = sum(t["result"] == "LOSS" for t in trades_detail)
         ties = sum(t["result"] == "TIE" for t in trades_detail)
-        trades = wins + losses + ties
-
-        win_percentage = (
-            wins / (wins + losses) * 100
-            if wins + losses > 0
-            else 0
+    
+        total_trades = wins + losses + ties
+    
+        win_rate = (
+            (wins / total_trades) * 100
+            if total_trades > 0 else 0
         )
-
-        net_profit = sum(
-            t["net"] for t in trades_detail
-            if t["net"] is not None
-        )
-
-        net_wins = sum(
-            t["net"] for t in trades_detail
-            if t["result"] == "WIN" and t["net"] is not None
-        )
-
-        net_losses = sum(
-            t["net"] for t in trades_detail
-            if t["result"] == "LOSS" and t["net"] is not None
-        )
-
-        net_ties = sum(
-            t["net"] for t in trades_detail
-            if t["result"] == "TIE" and t["net"] is not None
-        )
-
+    
         return {
-            "trades": trades,
+            "trades": total_trades,
             "wins": wins,
             "losses": losses,
             "ties": ties,
-            "win_percentage": round(win_percentage, 2),
-            "net_profit": float(round(net_profit, 4)),
-            "net_wins": float(round(net_wins, 4)),
-            "net_losses": float(round(net_losses, 4)),
-            "net_ties": float(round(net_ties, 4)),
-            "trades_detail": trades_detail,
+            "win_rate": round(win_rate, 2),
+            "net": sum(t["net"] for t in trades_detail),
+            "trades_detail": trades_detail
         }

@@ -1,8 +1,7 @@
-import numpy as np
 import pandas as pd
+import numpy as np
 import mplfinance as mpf
 from ..core.base import Signal
-
 
 class AROON(Signal):
 
@@ -11,16 +10,13 @@ class AROON(Signal):
         self.length = length
 
     def calculate(self, df):
-
         highs, lows = df["high"].values, df["low"].values
         up, down = np.full(len(df), np.nan), np.full(len(df), np.nan)
-
         for i in range(self.length, len(df)):
             hi = np.argmax(highs[i - self.length:i + 1])
             lo = np.argmin(lows[i - self.length:i + 1])
             up[i] = 100 * hi / self.length
             down[i] = 100 * lo / self.length
-
         df["aroon_up"], df["aroon_down"] = up, down
         return df
 
@@ -32,39 +28,17 @@ class AROON(Signal):
         return [mpf.make_addplot(df["aroon_up"], panel=panel, color="green", width=1, ylabel=self.plot_panel),
             mpf.make_addplot(df["aroon_down"], panel=panel, color="red", width=1)]
     
-    def test(self, df):
-        diff = df["aroon_up"] - df["aroon_down"]
+    def get_state(self, df):
+        up = df["aroon_up"]
+        down = df["aroon_down"]
+        state = pd.Series(float("nan"), index=df.index)
+        state.loc[up > down] = 1
+        state.loc[up < down] = -1
+        state.loc[up == down] = 0
+        return state
     
-        bull_signal = (diff.shift(1) <= 0) & (diff > 0)
-        bear_signal = (diff.shift(1) >= 0) & (diff < 0)
+    def backtest(self, df):
+        return self.test(df)
     
-        return self.backtest(df, bull_signal, bear_signal)
-    
-    def analyze(self, df):
-        if len(df) < 2:
-            return None
-        c, p = df.iloc[-1], df.iloc[-2]
-        if any(pd.isna(x) for x in [c["aroon_up"], c["aroon_down"], p["aroon_up"], p["aroon_down"]]):
-            return None
-        if c["aroon_up"] >= c["aroon_down"] and p["aroon_up"] < p["aroon_down"]:
-            return "BUY"
-        if c["aroon_up"] < c["aroon_down"] and p["aroon_up"] >= p["aroon_down"]:
-            return "SELL"
-    
-        return None
-    
-    def state(self, df):
-        if len(df) < 1:
-            return None
-        c = df.iloc[-1]
-        if any(pd.isna(x) for x in [c["aroon_up"], c["aroon_down"]]):
-            return None
-        if c["aroon_up"] >= c["aroon_down"]:
-            return "BUY"
-        if c["aroon_up"] < c["aroon_down"]:
-            return "SELL"
-    
-        return None
-
     def value(self, df):
         return df["aroon_up"].iloc[-1], df["aroon_down"].iloc[-1]

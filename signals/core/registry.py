@@ -7,9 +7,8 @@ from ..indicators.kijunsen import KIJUNSEN
 from ..indicators.ssl import SSL
 from ..indicators.wae import WAE
 
-
 SIGNALS = {
-    "absolute_strength": ABSOLUTE_STRENGTH,
+    "absolute_strength":ABSOLUTE_STRENGTH,
     "aroon": AROON,
     "atr": ATR,
     "ichimoku_cross": ICHIMOKU_CROSS,
@@ -17,8 +16,7 @@ SIGNALS = {
     "kijunsen": KIJUNSEN,
     "ssl": SSL,
     "wae": WAE,
-}
-
+    }
 
 def get_signal(name):
     if name not in SIGNALS:

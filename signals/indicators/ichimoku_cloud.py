@@ -14,7 +14,6 @@ class ICHIMOKU_CLOUD(Signal):
         self.lagging_span = lagging_span
 
     def calculate(self, df):
-
         df["Tankan_sen"] = (df["high"].rolling(self.conversion_line).max() + df["low"].rolling(self.conversion_line).min()) / 2
         df["Kijun_sen"] = (df["high"].rolling(self.base_line).max() + df["low"].rolling(self.base_line).min()) / 2
         df["Senkou_Span_A"] = ((df["Tankan_sen"] + df["Kijun_sen"]) / 2).shift(self.lagging_span)
@@ -27,95 +26,63 @@ class ICHIMOKU_CLOUD(Signal):
         return "price"
     
     def plot(self, df, panel):
-        return [mpf.make_addplot(df["Tankan_sen"], panel=panel, color='purple', width=1),
+        cloud_fill = dict(
+            y1=df["Senkou_Span_A"].values,
+            y2=df["Senkou_Span_B"].values,
+            where=(df["Senkou_Span_A"] >= df["Senkou_Span_B"]).values,
+            color="green",
+            alpha=0.15
+        )
+    
+        cloud_fill_bearish = dict(
+            y1=df["Senkou_Span_A"].values,
+            y2=df["Senkou_Span_B"].values,
+            where=(df["Senkou_Span_A"] < df["Senkou_Span_B"]).values,
+            color="red",
+            alpha=0.15
+        )
+    
+        return [
+            mpf.make_addplot(df["Tankan_sen"], panel=panel, color="purple", width=1),
             mpf.make_addplot(df["Kijun_sen"], panel=panel, color="blue", width=1),
-            mpf.make_addplot(df["Chikou_Span"], panel=panel, color='yellow', width=1),
-            mpf.make_addplot(df["Senkou_Span_A"], panel=panel, color="black", width=1),
-            mpf.make_addplot(df["Senkou_Span_B"], panel=panel, color="black", width=1)]
-    
-    def test(self, df):
-        atr_start = df["atr"].first_valid_index()
-    
-        if atr_start is None:
-            return None
-    
-        test_df = df.loc[atr_start:].copy()
-    
-        test_df = test_df.dropna(
-            subset=[
-                "Tankan_sen",
-                "Kijun_sen",
-                "Senkou_Span_A",
-                "Senkou_Span_B",
-                "atr"
-            ])
-    
-        cloud_top = test_df[["Senkou_Span_A", "Senkou_Span_B"]].max(axis=1)
-    
-        cloud_bottom = test_df[["Senkou_Span_A", "Senkou_Span_B"]].min(axis=1)
-    
-        # Your bullish condition
-        bullish = ((test_df["Tankan_sen"] >= test_df["Kijun_sen"]) & (test_df["close"] >= cloud_top))
-    
-        # Your bearish condition
-        bearish = ((test_df["Tankan_sen"] < test_df["Kijun_sen"]) & (test_df["close"] < cloud_bottom))
-    
-        # Only trigger when condition FIRST becomes true
-        bull_signal = bullish & ~bullish.shift(1, fill_value=False)
-        bear_signal = bearish & ~bearish.shift(1, fill_value=False)
-    
-        return self.backtest(test_df, bull_signal, bear_signal)
+            mpf.make_addplot(df["Chikou_Span"], panel=panel, color="yellow", width=1),
+            mpf.make_addplot(df["Senkou_Span_A"], panel=panel, color="green", width=0.8),
+            mpf.make_addplot(df["Senkou_Span_B"], panel=panel, color="red", width=0.8),
+            mpf.make_addplot(
+                df["Senkou_Span_A"],
+                panel=panel,
+                fill_between=cloud_fill
+            ),
+            mpf.make_addplot(
+                df["Senkou_Span_A"],
+                panel=panel,
+                fill_between=cloud_fill_bearish
+            )
+        ]
 
-    def analyze(self, df):
-        if len(df) < 2:
-            return None
-
-        c, p = df.iloc[-1], df.iloc[-2]
-
-        cols = ["Tankan_sen", "Kijun_sen", "Senkou_Span_A", "Senkou_Span_B"]
-        if any(pd.isna(c[x]) or pd.isna(p[x]) for x in cols):
-            return None
-
-        ctop = max(c["Senkou_Span_A"], c["Senkou_Span_B"])
-        cbottom = min(c["Senkou_Span_A"], c["Senkou_Span_B"])
-        ptop = max(p["Senkou_Span_A"], p["Senkou_Span_B"])
-        pbottom = min(p["Senkou_Span_A"], p["Senkou_Span_B"])
-
-        price_up = p["close"] < ptop and c["close"] >= ctop
-        price_down = p["close"] >= pbottom and c["close"] < cbottom
-
-        tenkan_up = p["Tankan_sen"] < p["Kijun_sen"] and c["Tankan_sen"] >= c["Kijun_sen"]
-        tenkan_down = p["Tankan_sen"] >= p["Kijun_sen"] and c["Tankan_sen"] < c["Kijun_sen"]
-
-        if (price_up and c["Tankan_sen"] >= c["Kijun_sen"]) or \
-           (tenkan_up and c["close"] >= ctop):
-            return "BUY"
-
-        if (price_down and c["Tankan_sen"] < c["Kijun_sen"]) or \
-           (tenkan_down and c["close"] < cbottom):
-            return "SELL"
-
-        return None
+    def get_state(self, df):
+        tenkan = df["Tankan_sen"]
+        kijun = df["Kijun_sen"]
+        close = df["close"]
+        cloud_max = df[["Senkou_Span_A", "Senkou_Span_B"]].max(axis=1)
+        cloud_min = df[["Senkou_Span_A", "Senkou_Span_B"]].min(axis=1)
+        # Default state: NaN until all indicator values are available
+        state = pd.Series(float("nan"), index=df.index)
+        valid = (tenkan.notna() & kijun.notna() & close.notna() & cloud_max.notna() & cloud_min.notna())
+        # Valid dates default to neutral
+        state.loc[valid] = 0
+        # Bullish
+        bullish = ((tenkan > kijun) & (close > cloud_max) )
+        # Bearish
+        bearish = ((tenkan < kijun) & (close < cloud_min) )
     
-    def state(self, df):
-        if len(df) < 1:
-            return None
-        c = df.iloc[-1]
-        cols = ["Tankan_sen", "Kijun_sen", "Senkou_Span_A", "Senkou_Span_B", "close"]
-        if any(pd.isna(c[x]) for x in cols):
-            return None
-        ctop = max(c["Senkou_Span_A"], c["Senkou_Span_B"])
-        cbottom = min(c["Senkou_Span_A"],c["Senkou_Span_B"])
-        bullish = (c["close"] >= ctop and c["Tankan_sen"] >= c["Kijun_sen"])
-        bearish = (c["close"] < cbottom and c["Tankan_sen"] < c["Kijun_sen"])
+        state.loc[valid & bullish] = 1
+        state.loc[valid & bearish] = -1
     
-        if bullish:
-            return "BUY"
-        if bearish:
-            return "SELL"
-    
-        return None
+        return state
 
+    def backtest(self, df):
+        return self.test(df)
+    
     def value(self, df):
-        return 
-        df["Tankan_sen"].iloc[-1], df["Kijun_sen"].iloc[-1], df["Senkou_Span_A"].iloc[-1], df["Senkou_Span_B"].iloc[-1], df["Chikou_Span"].iloc[-1]
+        return df["Tankan_sen"].iloc[-1], df["Kijun_sen"].iloc[-1], df["Senkou_Span_A"].iloc[-1], df["Senkou_Span_B"].iloc[-1], df["Chikou_Span"].iloc[-1]
