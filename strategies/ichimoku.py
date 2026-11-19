@@ -27,7 +27,30 @@ class ICHIMOKU:
         signals.loc[bullish] = "Buy"
         signals.loc[bearish] = "Sell"
         result = signals.iloc[-1]
-        return None if pd.isna(result) else result
+        return None if pd.isna(result) else self.trade_result(df, result)
+
+    def trade_result(self, df, direction):
+        price = df["close"].iloc[-1]
+        atr = self.atr.value(df)
+    
+        if pd.isna(price) or pd.isna(atr):
+            return None
+    
+        if direction == "BUY":
+            take_profit = price + atr
+            stop_loss = price - (atr * 1.5)
+        else:
+            take_profit = price - atr
+            stop_loss = price + (atr * 1.5)
+    
+        return {
+            "signal": "Ichimoku",
+            "direction": direction,
+            "price": float(round(price, 4)),
+            "atr": float(round(atr, 4)),
+            "take_profit": float(round(take_profit, 4)),
+            "stop_loss": float(round(stop_loss, 4)),
+        }
     
     def backtest(self, df):
         trades_detail = []
@@ -38,7 +61,7 @@ class ICHIMOKU:
             if result is None:
                 i += 1
                 continue
-            direction = result
+            direction = result['direction']
             entry_time = current_df.index[-1]
             entry_price = current_df["close"].iloc[-1]
             atr_value = self.atr.value(current_df)
