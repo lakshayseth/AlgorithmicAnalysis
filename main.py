@@ -100,7 +100,7 @@ def run_all(period, delay):
 
     main(crypto, exchange_crypto, period)
     
-    #send_email(log)
+    send_email(log)
 
 if __name__ == '__main__':
     run_all(period='D', delay=5)
